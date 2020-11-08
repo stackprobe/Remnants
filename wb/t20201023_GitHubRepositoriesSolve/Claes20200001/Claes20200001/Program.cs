@@ -5,6 +5,7 @@ using System.Text;
 using System.IO;
 using System.Windows.Forms;
 using Charlotte.Commons;
+using Charlotte.Tests;
 
 namespace Charlotte
 {
@@ -17,6 +18,27 @@ namespace Charlotte
 
 		private void Main2(ArgsReader ar)
 		{
+			//TestMain();
+			ProductMain();
+		}
+
+		private void TestMain()
+		{
+			// -- choose one --
+
+			//new Test0001().Test01();
+			//new Test0001().Test02();
+			//new Test0001().Test03();
+			new Test0001().Test01();
+
+			// --
+
+			Console.WriteLine("Press ENTER key.");
+			Console.ReadLine();
+		}
+
+		private void ProductMain()
+		{
 			if (!Directory.Exists(Consts.REPOSITORIES_ROOT_DIR))
 				throw new Exception("リポジトリのルート・ディレクトリが見つかりません。");
 
@@ -26,10 +48,34 @@ namespace Charlotte
 
 		private void Solve(string dir)
 		{
+			SolveForVS2019(dir);
 			SolveForFactory(dir);
 			SolveGameResource(dir);
 			SolveNonAsciiCharactersPaths(dir);
 			SolveEmptyFolders(dir);
+		}
+
+		private void SolveForVS2019(string dir)
+		{
+			foreach (string file in Common.GetRepositoryFiles(dir))
+			{
+				if (SCommon.ContainsIgnoreCase(file, "\\packages\\"))
+				{
+					SFVS2019_Mask(file);
+				}
+			}
+		}
+
+		private void SFVS2019_Mask(string file)
+		{
+			const string FILE_SUFFIX = "_ghrs-vs2019-ignore.txt";
+			const string MASKED_TEXT = "//// ghrs-vs2019-ignore ////";
+
+			if (SCommon.EndsWithIgnoreCase(file, FILE_SUFFIX)) // ? マスク済み
+				return;
+
+			SCommon.DeletePath(file);
+			File.WriteAllText(file + FILE_SUFFIX, MASKED_TEXT);
 		}
 
 		private void SolveNonAsciiCharactersPaths(string dir)
@@ -106,7 +152,7 @@ namespace Charlotte
 
 		private void SolveForFactory(string dir)
 		{
-			foreach (string file in Common.GetAllFiles(dir))
+			foreach (string file in Common.GetRepositoryFiles(dir))
 			{
 				string lwrExt = Path.GetExtension(file).ToLower();
 
@@ -116,7 +162,7 @@ namespace Charlotte
 					)
 					SCommon.DeletePath(file);
 			}
-			foreach (string file in Common.GetAllFiles(dir))
+			foreach (string file in Common.GetRepositoryFiles(dir))
 			{
 				if (
 					SCommon.ContainsIgnoreCase(file, "\\tmp\\") ||
@@ -128,7 +174,7 @@ namespace Charlotte
 
 		private void SolveGameResource(string dir)
 		{
-			foreach (string file in Common.GetAllFiles(dir))
+			foreach (string file in Common.GetRepositoryFiles(dir))
 			{
 				if (
 					SCommon.ContainsIgnoreCase(file, "\\dat\\") ||
@@ -139,25 +185,65 @@ namespace Charlotte
 			}
 		}
 
-		private const string SGR_MASKED_FILE_SUFFIX = "_ghrs-secret.txt";
-
 		private void SGR_Mask(string file)
 		{
-			if (SCommon.EndsWithIgnoreCase(file, SGR_MASKED_FILE_SUFFIX)) // ? マスク済み
+			const string FILE_SUFFIX = "_ghrs-secret.txt";
+			const string MASKED_TEXT = "//// ghrs-secret ////";
+
+			if (SCommon.EndsWithIgnoreCase(file, FILE_SUFFIX)) // ? マスク済み
 				return;
 
 			if (IsLikeASourceFile(file)) // ? ソースファイルっぽい -> 除外
 				return;
 
 			SCommon.DeletePath(file);
-			File.WriteAllText(file + SGR_MASKED_FILE_SUFFIX, "//// ghrs-secret ////");
+			File.WriteAllText(file + FILE_SUFFIX, MASKED_TEXT);
 		}
 
 		private bool IsLikeASourceFile(string file)
 		{
+			return
+				IsLikeASourceFile_C(file) ||
+				IsLikeASourceFile_CS(file);
+		}
+
+		public bool IsLikeASourceFile_C(string file)
+		{
+			bool insideOfComment = false;
+			int lineCount = 0;
+
+			foreach (string line in Common.ReadAllLines_SJIS(file))
+			{
+				if (line != "")
+				{
+					if (insideOfComment)
+					{
+						if (line == "*/")
+							insideOfComment = false;
+					}
+					else
+					{
+						if (line == "/*")
+							insideOfComment = true;
+						else if (line.StartsWith("#include <"))
+							return true;
+						else if (line.StartsWith("#include \""))
+							return true;
+					}
+				}
+				lineCount++;
+
+				if (1000 <= lineCount) // ? #include までの行が多すぎる。
+					break;
+			}
+			return false;
+		}
+
+		private bool IsLikeASourceFile_CS(string file)
+		{
 			// .cs ファイルの想定開始パターン
-			// -- BOM + "using System;" + 改行 + "using "
-			byte[] csStPtn = new byte[] { 0xef, 0xbb, 0xbf, 0x75, 0x73, 0x69, 0x6e, 0x67, 0x20, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x3b, 0x0d, 0x0a, 0x75, 0x73, 0x69, 0x6e, 0x67, 0x20 };
+			// -- BOM + "using "
+			byte[] csStPtn = new byte[] { 0xef, 0xbb, 0xbf, 0x75, 0x73, 0x69, 0x6e, 0x67, 0x20 };
 
 			using (FileStream reader = new FileStream(file, FileMode.Open, FileAccess.Read))
 				foreach (byte bChr in csStPtn)
