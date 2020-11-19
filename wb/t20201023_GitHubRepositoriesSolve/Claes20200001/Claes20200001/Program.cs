@@ -18,8 +18,12 @@ namespace Charlotte
 
 		private void Main2(ArgsReader ar)
 		{
-			//TestMain();
-			ProductMain();
+			// -- choose one --
+
+			//TestMain(); // テスト
+			ProductMain(); // 本番
+
+			// --
 		}
 
 		private void TestMain()
