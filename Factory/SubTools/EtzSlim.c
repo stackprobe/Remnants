@@ -3,7 +3,7 @@
 
 	- - -
 
-	EtcSlim.exe [/D] [/R] [対象ディレクトリ]
+	EtzSlim.exe [/D] [/R] [対象ディレクトリ]
 */
 
 #include "C:\Factory\Common\all.h"
@@ -62,7 +62,7 @@ static void DoDeleteFile(char *file)
 	cout("* %s\n", file);
 	semiRemovePath(file);
 }
-static void EtcSlim(char *dir)
+static void EtzSlim(char *dir)
 {
 	autoList_t *files = lssFiles(dir);
 	char *file;
@@ -137,13 +137,13 @@ readArgs:
 
 	if(hasArgs(1))
 	{
-		EtcSlim(nextArg());
+		EtzSlim(nextArg());
 		return;
 	}
 
 	for(; ; )
 	{
-		EtcSlim(c_dropDir());
+		EtzSlim(c_dropDir());
 		cout("\n");
 	}
 }
